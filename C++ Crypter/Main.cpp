@@ -49,6 +49,11 @@ either expressed or implied, of the FreeBSD Project.
 #include <fstream>
 #include <vector>
 #include <string>
+#include "VirtualAES.h"
+#include <iterator>
+#include "huffman.h"
+
+
 using namespace std;
 
 char * FB; //The Buffer that will store the File's data
@@ -60,6 +65,7 @@ char name[MAX_PATH];   // We will store the Name of the Crypted file here
 
 std::vector<char> file_data;  // With your current program, make this a global.
 
+
 void RDF() //The Function that Reads the File and Copies the stub
 {
 	DWORD bt;
@@ -67,6 +73,9 @@ void RDF() //The Function that Reads the File and Copies the stub
 	cout << "Please enter the Path of the file \nIf the file is in the same folder as the builder\nJust type the file name with an extention\nEG: Stuff.exe\n";
 	cout << "File Name: ";
 	cin >> name; // Ask for input from the user and store that inputed value in the name variable
+	//depuracion
+	//nombre = "calc.exe";
+	//
 	cout << "Enter output name: ";
 	cin >> output;
 	CopyFile("stub.exe", output/*L"Crypted.exe"*/, 0);// Copy stub , so we done need to download a new one each time we crypt
@@ -103,12 +112,69 @@ void xor_crypt(const std::string &key, std::vector<char> &data)
 		out << *it;*/
 }
 
+/**
+ * @brief MainWindow::encrypt
+ * @param rawData
+ *
+ * AES-256 Bit Encryption. Block Size 128 Bit, Key 256 Bit.
+ *
+ */
+void encrypt(std::vector<char> rawData)
+{
+	//256 Bit Key
+	unsigned char key[KEY_256] = "S#q-}=6{)BuEV[GDeZy>~M5D/P&Q}6>";
+
+	unsigned char plaintext[BLOCK_SIZE];
+	unsigned char ciphertext[BLOCK_SIZE];
+
+	aes_ctx_t* ctx;
+	virtualAES::initialize();
+	ctx = virtualAES::allocatectx(key, sizeof(key));
+
+	int count = 0;
+	int index = file_data.size() / 16; //Outer loop range
+	int innerCount = 0;
+	int innerIndex = 16; //We encrypt&copy 16 Bytes for once.
+	int dataIndex = 0; //Non resetting @rawData index for encryption
+	int copyIndex = 0; //Non resetting @rawData index for copying encrypted data.
+
+
+	for (count; count < index; count++)
+	{
+		for (innerCount = 0; innerCount < innerIndex; innerCount++)
+		{
+			plaintext[innerCount] = rawData[dataIndex];
+			dataIndex++;
+		}
+
+		virtualAES::encrypt(ctx, plaintext, ciphertext);
+
+		for (innerCount = 0; innerCount < innerIndex; innerCount++)
+		{
+			rawData[copyIndex] = ciphertext[innerCount];
+			copyIndex++;
+		}
+	}
+
+	delete ctx;
+}
+
+void compresionHuffman(const char* input_file, const char* output_file)//std::vector<char> rawData)
+{
+	HuffmanCompressor(input_file).compress(output_file);
+}
+
 void choose_enc()
 {
 	//Asks users for encryption method
 	cout << "\n\nChoose encryption method: " << endl;
 	cout << "1. N/A" << endl;
 	cout << "2. Simple XOR" << endl;
+	cout << "3. Simple AES" << endl;
+	cout << "4. Simple XOR && AES" << endl;
+	cout << "5. Simple AES && XOR" << endl;
+	//cout << "6. Simple HUFFMAN" << endl;
+	cout << "6. Simple XOR && AES && XOR" << endl;
 	cin >> choice;
 }
 
@@ -119,16 +185,42 @@ void enc() // The function that Encrypts the info on the FB buffer
 	switch (choice)
 	{
 	case '1':
-		break;
+	break;
 	case '2':
-		{
-			/*ofstream myfile("2.dat");
-			for (std::vector<char>::const_iterator it = file_data.begin(), itEnd = file_data.end(); it != itEnd; ++it)
-				myfile << *it;*/
-			xor_crypt("penguin", file_data); //Encrypt it
-
-		}
+	{
+		/*ofstream myfile("2.dat");
+		for (std::vector<char>::const_iterator it = file_data.begin(), itEnd = file_data.end(); it != itEnd; ++it)
+			myfile << *it;*/
+		xor_crypt("penguin", file_data); //Encrypt it
+	}
+	break;
+	case '3':
+	{
+		encrypt(file_data);
+	}
+	break;
+	case '4':
+	{
+		xor_crypt("penguin", file_data); //Encrypt it
+		encrypt(file_data);
+	}
+	break;
+	case '5':
+	{
+		encrypt(file_data);
+		xor_crypt("penguin", file_data); //Encrypt it
+	}
 		break;
+	case '6':
+	{
+		//compresionHuffman(name, output);
+		xor_crypt("penguin", file_data); //Encrypt it
+		encrypt(file_data);
+		xor_crypt("elephant", file_data); //Encrypt it
+		encrypt(file_data);
+		xor_crypt("Qwe,.-123%&/()", file_data); //Encrypt it
+	}
+	break;
 		return;
 	}
 }

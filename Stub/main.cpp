@@ -4,6 +4,10 @@
 #include "Runpe.h"
 #include <vector>
 #include <string>
+#include "VirtualAES.h"
+#include <cstddef>
+#include "huffman.h"
+
 using namespace std;
 
 
@@ -70,6 +74,14 @@ int Rsize;
 
 std::vector<char> RData;
 
+//Variables para AES
+enum { SUCCESS, FAIL, MAX_LEN = 16 };
+unsigned char key[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }; //key example
+unsigned int plainLen = 16 * sizeof(unsigned char);  //bytes in plaintext
+unsigned int outLen = 0;  // out param - bytes in ?iphertext
+unsigned char* c = new unsigned char[plainLen];
+std::vector<char> file_data2;
+
 void Resource(int id)
 {
 	size_t Rsize;
@@ -87,7 +99,49 @@ void xor_crypt(const std::string &key, std::vector<char> &data)
 		data[i] ^= key[i % key.size()];
 }
 
+void AESDecrypt(std::vector<char> toDecrypt, int size)
+{
+	//Explanation exist in Builder
+	unsigned char key[KEY_256] = "S#q-}=6{)BuEV[GDeZy>~M5D/P&Q}6>";
 
+	unsigned char ciphertext[BLOCK_SIZE];
+	unsigned char decrypted[BLOCK_SIZE];
+
+	aes_ctx_t* ctx;
+	virtualAES::initialize();
+	ctx = virtualAES::allocatectx(key, sizeof(key));
+
+	int count = 0;
+	int index = size / 16;
+	int innerCount = 0;
+	int innerIndex = 16;
+	int dataCount = 0;
+	int copyCount = 0;
+	for (count; count < index; count++)
+	{
+		for (innerCount = 0; innerCount < innerIndex; innerCount++)
+		{
+			ciphertext[innerCount] = toDecrypt[dataCount];
+			dataCount++;
+		}
+
+		virtualAES::decrypt(ctx, ciphertext, decrypted);
+
+		for (innerCount = 0; innerCount < innerIndex; innerCount++)
+		{
+			toDecrypt[copyCount] = decrypted[innerCount];
+			copyCount++;
+		}
+	}
+
+	delete ctx;
+}
+
+void descompresionHuffman( std::vector<char> toDecrypt)
+{
+	//HuffmanCompressor(argv[2]).decompress(argv[3]);
+	//HuffmanCompressor("").decompress(toDecrypt);
+}
 
 void enc()
 {
@@ -101,8 +155,38 @@ void enc()
 	case '2':
 		{
 			xor_crypt("penguin", RData);
+			//AES_decrypt(RData);
 		}
 		break;
+	case '3':
+		{
+			AESDecrypt(RData, RData.size());
+		}
+		break;
+	case '4':
+		{
+			AESDecrypt(RData, RData.size());
+			xor_crypt("penguin", RData);
+			
+		}
+		break;
+	case '5':
+	{
+			xor_crypt("penguin", RData);
+			AESDecrypt(RData, RData.size());
+	}
+		break;
+	case '6':
+	{
+		//descompresionHuffman(RData);
+		xor_crypt("Qwe,.-123%&/()", RData); //Encrypt it
+		AESDecrypt(RData, RData.size());
+		xor_crypt("elephant", RData); //Encrypt it
+		AESDecrypt(RData, RData.size());
+		xor_crypt("penguin", RData); //Encrypt it
+		
+	}
+	break;
 	}
 	return;
 }
